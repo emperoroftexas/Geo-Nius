@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#080d12" />
+  <title>Geo-Nius — Daily World Conquest</title>
+  <style>
+    :root{
+      --ink:#f6f1e6;
+      --muted:#aeb7bb;
+      --gold:#e9bd59;
+      --red:#b74231;
+      --green:#6f9b74;
+      --panel:rgba(10,15,20,.92);
+      --line:rgba(255,255,255,.13);
+      --shadow:0 18px 60px rgba(0,0,0,.46);
+    }
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#05080c;color:var(--ink);
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button{font:inherit}
+    #globe{position:fixed;inset:0}
+    #globe .cesium-widget,#globe canvas{width:100%;height:100%}
+    .cesium-viewer-bottom{z-index:18}
+    .cesium-viewer-toolbar,.cesium-viewer-animationContainer,.cesium-viewer-timelineContainer{display:none!important}
+    #vignette{position:fixed;inset:0;pointer-events:none;background:
+      radial-gradient(circle at 50% 44%,rgba(0,0,0,0) 0 40%,rgba(0,0,0,.14) 66%,rgba(0,0,0,.70) 100%)}
+    .topbar{position:fixed;z-index:20;top:0;left:0;right:0;display:flex;justify-content:space-between;gap:12px;
+      align-items:flex-start;padding:14px}
+    .glass{background:rgba(7,12,16,.80);border:1px solid var(--line);backdrop-filter:blur(14px);box-shadow:0 10px 35px rgba(0,0,0,.28)}
+    .brand{border-radius:14px;padding:10px 13px;display:flex;align-items:center;gap:9px;font-weight:950;letter-spacing:-.04em}
+    .crest{width:24px;height:24px;border:1px solid rgba(233,189,89,.6);border-radius:50%;display:grid;place-items:center;color:var(--gold);font-size:13px}
+    .brand em{font-style:normal;color:var(--gold)}
+    .rightTop{display:flex;gap:8px;align-items:stretch}
+    .scorebox{border-radius:14px;padding:8px 12px;text-align:right;min-width:104px}
+    .scorebox small,.account small{display:block;font-size:9px;letter-spacing:.14em;color:var(--muted);font-weight:850;text-transform:uppercase}
+    .scorebox strong{font-size:20px;line-height:1;font-variant-numeric:tabular-nums}
+    .account{border-radius:14px;padding:8px 11px;text-align:right;cursor:pointer;color:var(--ink)}
+    .account b{font-size:12px}
+    .dots{position:fixed;z-index:21;top:19px;left:50%;transform:translateX(-50%);display:flex;gap:7px}
+    .dot{width:9px;height:9px;border-radius:50%;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.12)}
+    .dot.active{background:var(--gold);box-shadow:0 0 0 4px rgba(233,189,89,.12)}
+    .dot.done{background:var(--green)}
+    .panel{position:fixed;z-index:22;left:50%;bottom:18px;transform:translateX(-50%);
+      width:min(760px,calc(100% - 28px));padding:16px 18px;border-radius:22px;text-align:center}
+    .eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:900;color:var(--gold)}
+    .city{font-size:clamp(25px,5vw,43px);font-weight:950;letter-spacing:-.05em;line-height:1.02;margin-top:4px}
+    .instruction{font-size:13px;color:var(--muted);margin-top:7px}
+    .micro{font-size:10px;color:#7e8a90;margin-top:7px}
+    .result{display:none;border-top:1px solid var(--line);margin-top:12px;padding-top:13px}
+    .result.show{display:block}
+    .feedback{font-family:Georgia,"Times New Roman",serif;font-size:clamp(22px,4vw,31px);font-style:italic;color:var(--gold);margin-bottom:8px}
+    .resultGrid{display:grid;grid-template-columns:1fr 1fr auto;align-items:center;gap:12px;text-align:left}
+    .metric small{display:block;color:var(--muted);font-size:9px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}
+    .metric strong{font-size:21px;font-variant-numeric:tabular-nums}
+    .next{appearance:none;border:0;border-radius:12px;padding:11px 17px;background:var(--gold);color:#16110a;font-weight:950;cursor:pointer}
+    .story{display:none;text-align:left;margin-top:12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.045);line-height:1.48;color:#d8d9d5;font-size:13px}
+    .story.show{display:block}
+    .story strong{color:var(--ink)}
+    .start,.final,.auth{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:18px;background:
+      radial-gradient(circle at 50% 35%,rgba(48,72,79,.38),rgba(3,6,9,.95) 62%)}
+    .card{width:min(560px,100%);border-radius:28px;padding:28px;text-align:center}
+    .start h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(48px,10vw,78px);margin:0;letter-spacing:-.06em;line-height:.92}
+    .start h1 span{color:var(--gold)}
+    .tagline{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:20px;color:#d8c492;margin-top:9px}
+    .start p,.final p,.auth p{color:var(--muted);line-height:1.5}
+    .primary,.secondary,.social{appearance:none;border-radius:13px;padding:12px 18px;font-weight:900;cursor:pointer}
+    .primary{border:0;background:var(--gold);color:#171109}
+    .secondary{border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink)}
+    .actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap}
+    .rule{margin:18px auto 0;max-width:410px;padding-top:14px;border-top:1px solid var(--line);font-size:11px;color:#859097}
+    .final{display:none}.final.show{display:grid}
+    .finalScore{font-size:clamp(62px,14vw,100px);font-weight:950;letter-spacing:-.07em;color:var(--gold);line-height:.9}
+    .finalLabel{font-size:13px;color:var(--muted);margin-top:7px}
+    .breakdown{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:18px 0}
+    .breakdown div{padding:9px 3px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.035)}
+    .breakdown small{display:block;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.12em}
+    .breakdown b{font-size:13px}
+    .auth{display:none;background:rgba(1,4,7,.88);backdrop-filter:blur(10px)}.auth.show{display:grid}
+    .auth .card{max-width:420px}
+    .social{display:block;width:100%;margin-top:8px;border:1px solid var(--line);background:#fff;color:#151515}
+    .social.apple{background:#111;color:white}
+    .close{margin-top:10px;background:none;border:0;color:var(--muted);cursor:pointer}
+    .devnote{font-size:10px;color:#79858a;margin-top:11px}
+    .flag-marker,.spear-marker{pointer-events:none;transform-origin:50% 100%;filter:drop-shadow(0 3px 2px rgba(0,0,0,.5))}
+    .flag-marker{width:42px;height:54px;position:relative}
+    .flag-marker .pole{position:absolute;left:18px;bottom:0;width:3px;height:48px;background:linear-gradient(#ded5bb,#7e7055);border-radius:2px}
+    .flag-marker .cloth{position:absolute;left:20px;top:3px;width:22px;height:15px;background:var(--gold);
+      clip-path:polygon(0 0,100% 8%,82% 52%,100% 94%,0 86%);border-radius:1px}
+    .flag-marker .foot{position:absolute;left:14px;bottom:-3px;width:11px;height:5px;border-radius:50%;background:rgba(0,0,0,.55)}
+    .spear-marker{width:38px;height:60px;position:relative}
+    .spear-marker .shaft{position:absolute;left:18px;bottom:0;width:3px;height:47px;background:linear-gradient(#865935,#3f2d1c);transform:rotate(8deg);transform-origin:bottom}
+    .spear-marker .head{position:absolute;left:13px;top:0;width:13px;height:22px;background:linear-gradient(135deg,#e8e8e6,#777);
+      clip-path:polygon(50% 0,100% 58%,60% 100%,42% 70%,0 58%)}
+    .spear-marker .foot{position:absolute;left:13px;bottom:-3px;width:12px;height:5px;border-radius:50%;background:rgba(0,0,0,.55)}
+    .zoomBadge{position:fixed;z-index:19;right:14px;top:75px;border-radius:10px;padding:8px 10px;font-size:9px;color:#b7c0c4;text-align:right;min-width:124px}
+    .zoomBadge strong{display:block;color:var(--gold);font-size:14px;letter-spacing:.02em;margin-top:2px}
+    .impact-ring{position:fixed;pointer-events:none;z-index:17;width:26px;height:26px;border:2px solid rgba(233,189,89,.9);border-radius:50%;transform:translate(-50%,-50%) scale(.25);opacity:0}
+    @media(max-width:650px){
+      .dots{top:67px}.resultGrid{grid-template-columns:1fr 1fr}.resultGrid .next{grid-column:1/-1}
+      .account{display:none}.panel{bottom:10px;padding:14px}.story{max-height:145px;overflow:auto}
+      .zoomBadge{top:67px;right:10px}.breakdown{gap:4px}.breakdown b{font-size:11px}
+    }
+  </style>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.143/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+</head>
+<body>
+<div id="globe"></div><div id="vignette"></div>
+
+<div class="topbar">
+  <div class="brand glass"><div class="crest">♜</div><div>GEO-<em>NIUS</em></div></div>
+  <div class="rightTop">
+    <button class="account glass" id="accountBtn"><small>Prize play</small><b>Sign in</b></button>
+    <div class="scorebox glass"><small>Conquest score</small><strong id="score">0</strong></div>
+  </div>
+</div>
+<div class="dots" id="dots"></div>
+<div class="zoomBadge glass"><span>CURRENT ALTITUDE</span><strong id="altitudeReadout">—</strong><span id="zoomFloorLabel">MIN ≈ 2.6M FT</span></div>
+
+<div class="panel glass" id="gamePanel" style="display:none">
+  <div class="eyebrow" id="roundLabel">Territory 1 of 5</div>
+  <div class="city" id="cityName"></div>
+  <div class="instruction">Plant your flag where you believe the city lies.</div>
+  <div class="micro">Drag to rotate • scroll/pinch to zoom • labels and borders are hidden</div>
+  <div class="result" id="result">
+    <div class="feedback" id="feedback"></div>
+    <div class="resultGrid">
+      <div class="metric"><small>Miles off</small><strong id="milesOff">0</strong></div>
+      <div class="metric"><small>Territory points</small><strong id="roundPoints">12,430</strong></div>
+      <button class="next" id="nextBtn">Next territory</button>
+    </div>
+    <div class="story" id="story"></div>
+  </div>
+</div>
+
+<div class="start" id="start">
+  <div class="card glass">
+    <div class="eyebrow">Daily world conquest</div>
+    <h1>Geo-<span>Nius</span></h1>
+    <div class="tagline">Plant your flag. Claim the world.</div>
+    <p>Five cities. No borders. No labels. Every mile you miss costs you one point.</p>
+    <div class="actions">
+      <button class="primary" id="guestBtn">Conquer as guest</button>
+      <button class="secondary" id="prizeBtn">Sign in for prizes</button>
+    </div>
+    <div class="rule">Each territory begins at <b>12,430 points</b>. Five perfect guesses = <b>62,150</b>. A perfectly antipodal five-round disaster = <b>0</b>.</div>
+  </div>
+</div>
+
+<div class="final" id="final">
+  <div class="card glass">
+    <div class="eyebrow">Conquest complete</div>
+    <div class="finalScore" id="finalScore">0</div>
+    <div class="finalLabel">out of 62,150</div>
+    <div class="breakdown" id="breakdown"></div>
+    <div class="feedback" id="finalFeedback"></div>
+    <div class="actions">
+      <button class="primary" id="shareBtn">Share score</button>
+      <button class="secondary" id="againBtn">Replay prototype</button>
+    </div>
+    <p id="eligibilityNote">Guest play is free. Sign in is required only for prize eligibility.</p>
+  </div>
+</div>
+
+<div class="auth" id="auth">
+  <div class="card glass">
+    <div class="eyebrow">Prize eligibility</div>
+    <h2 style="margin:7px 0 0">Create your Geo-Nius identity</h2>
+    <p>The production version will use one-click social login, then ask for a unique username only if needed.</p>
+    <button class="social" id="googleDemo">Continue with Google</button>
+    <button class="social apple" id="appleDemo">Continue with Apple</button>
+    <button class="close" id="closeAuth">Continue as guest instead</button>
+    <div class="devnote">Prototype note: real authentication is intentionally not connected until the backend is created.</div>
+  </div>
+</div>
+
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.143/Build/Cesium/Cesium.js"></script>
+<script>
+/* ============================================================
+   GEO-NIUS OWNER DAILY INPUT
+   Later this block will be replaced by a simple owner dashboard.
+   For now, change the five city records and blurbs here.
+   ============================================================ */
+const DAILY_GAME = {
+  date: "2026-08-13",
+  number: 1,
+  locations: [
+    {
+      city: "Paris, France", lat: 48.8566, lng: 2.3522,
+      blurb: "Owner blurb goes here. This area is designed for the 2–3 paragraph story you create for the city and date. It appears only after the player has planted a flag and the correct location has been revealed."
+    },
+    {
+      city: "Cape Town, South Africa", lat: -33.9249, lng: 18.4241,
+      blurb: "Replace this with the daily historical, cultural, biographical, or event-based story for Cape Town."
+    },
+    {
+      city: "Tokyo, Japan", lat: 35.6762, lng: 139.6503,
+      blurb: "Replace this with the daily story for Tokyo."
+    },
+    {
+      city: "Buenos Aires, Argentina", lat: -34.6037, lng: -58.3816,
+      blurb: "Replace this with the daily story for Buenos Aires."
+    },
+    {
+      city: "Reykjavík, Iceland", lat: 64.1466, lng: -21.9426,
+      blurb: "Replace this with the daily story for Reykjavík."
+    }
+  ]
+};
+
+const ROUND_MAX = 12430;
+const GAME_MAX = ROUND_MAX * 5;
+const GAME_EARTH_RADIUS_MI = ROUND_MAX / Math.PI;
+const MIN_CAMERA_HEIGHT_M = 800000; // calibrated to the Buenos Aires screenshot (~2.62 million ft)
+const INITIAL_CAMERA_HEIGHT_M = 13500000;
+
+let round = 0, total = 0, locked = false, signedIn = false;
+let roundScores = [];
+let guessEntity = null, targetEntity = null, routeEntity = null;
+
+const viewer = new Cesium.Viewer("globe", {
+  animation: false,
+  baseLayerPicker: false,
+  fullscreenButton: false,
+  geocoder: false,
+  homeButton: false,
+  infoBox: false,
+  navigationHelpButton: false,
+  sceneModePicker: false,
+  selectionIndicator: false,
+  timeline: false,
+  baseLayer: false,
+  terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+  requestRenderMode: false,
+  maximumRenderTimeChange: Infinity
+});
+
+viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#0b1720");
+viewer.scene.backgroundColor = Cesium.Color.BLACK;
+viewer.scene.skyBox.show = true;
+viewer.scene.sun.show = true;
+viewer.scene.moon.show = false;
+viewer.scene.fog.enabled = true;
+viewer.scene.screenSpaceCameraController.enableCollisionDetection = true;
+viewer.scene.screenSpaceCameraController.minimumZoomDistance = MIN_CAMERA_HEIGHT_M;
+viewer.scene.screenSpaceCameraController.maximumZoomDistance = 45000000;
+viewer.scene.screenSpaceCameraController.inertiaSpin = 0.94;
+viewer.scene.screenSpaceCameraController.inertiaTranslate = 0.90;
+viewer.scene.screenSpaceCameraController.inertiaZoom = 0.86;
+viewer.scene.screenSpaceCameraController.maximumMovementRatio = 0.06;
+
+// Prevent tilting below the horizon and keep the game in "globe" mode rather than a street-view-like angle.
+viewer.scene.screenSpaceCameraController.enableTilt = false;
+viewer.scene.screenSpaceCameraController.enableLook = false;
+
+// Satellite imagery only: no political borders, roads, or labels.
+(async function loadSatelliteImagery(){
+  try {
+    const provider = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
+      "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+      { enablePickFeatures: false }
+    );
+    const layer = new Cesium.ImageryLayer(provider);
+    viewer.imageryLayers.add(layer);
+    viewer.scene.requestRender();
+  } catch (err) {
+    console.error("Satellite imagery failed to load:", err);
+  }
+})();
+
+// Initial whole-Earth view.
+viewer.camera.setView({
+  destination: Cesium.Cartesian3.fromDegrees(-15, 18, INITIAL_CAMERA_HEIGHT_M),
+  orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 }
+});
+
+// Belt-and-suspenders camera clamp. The floor is intentionally much higher than 75,000 ft:
+// it is calibrated to the Buenos Aires reference screenshot so urban areas read as broad masses,
+// not street grids.
+viewer.scene.postRender.addEventListener(() => {
+  const h = viewer.camera.positionCartographic.height;
+  if (h < MIN_CAMERA_HEIGHT_M - 1) {
+    const c = viewer.camera.positionCartographic;
+    viewer.camera.setView({
+      destination: Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, MIN_CAMERA_HEIGHT_M),
+      orientation: { heading: viewer.camera.heading, pitch: Cesium.Math.toRadians(-90), roll: 0 }
+    });
+  }
+});
+
+const PLAYER_ICON = "assets/player.svg";
+const TARGET_ICON = "assets/target.svg";
+
+function removeRoundEntities(){
+  [guessEntity,targetEntity,routeEntity].forEach(e => { if(e) viewer.entities.remove(e); });
+  guessEntity = targetEntity = routeEntity = null;
+}
+
+function addGuessAndAnswer(guessLat, guessLng, target){
+  guessEntity = viewer.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(guessLng, guessLat, 0),
+    billboard: {
+      image: PLAYER_ICON,
+      width: 118, height: 118,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    }
+  });
+
+  // The answer marker begins above the target and animates down to the surface.
+  targetEntity = viewer.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(target.lng, target.lat, 280000),
+    billboard: {
+      image: TARGET_ICON,
+      width: 54, height: 92,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    }
+  });
+
+  routeEntity = viewer.entities.add({
+    polyline: {
+      positions: Cesium.Cartesian3.fromDegreesArray([guessLng, guessLat, target.lng, target.lat]),
+      width: 4,
+      arcType: Cesium.ArcType.GEODESIC,
+      material: new Cesium.PolylineGlowMaterialProperty({
+        glowPower: 0.22,
+        color: Cesium.Color.fromCssColorString("#e9bd59")
+      }),
+      clampToGround: false
+    }
+  });
+
+  const start = performance.now();
+  const duration = 780;
+  function animateTarget(now){
+    const raw = Math.min(1, (now-start)/duration);
+    const eased = 1 - Math.pow(1-raw, 3);
+    const height = 280000 * (1-eased);
+    targetEntity.position = Cesium.Cartesian3.fromDegrees(target.lng, target.lat, height);
+    if(raw < 1){
+      requestAnimationFrame(animateTarget);
+    } else {
+      targetEntity.position = Cesium.Cartesian3.fromDegrees(target.lng, target.lat, 0);
+      flashImpact(target.lat, target.lng);
+    }
+  }
+  requestAnimationFrame(animateTarget);
+}
+
+function flashImpact(lat,lng){
+  const ring = viewer.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(lng,lat,0),
+    ellipse: {
+      semiMajorAxis: 9000,
+      semiMinorAxis: 9000,
+      material: Cesium.Color.fromCssColorString("#e9bd59").withAlpha(.22),
+      outline: true,
+      outlineColor: Cesium.Color.fromCssColorString("#ffe29a"),
+      height: 0
+    }
+  });
+  let t0=performance.now();
+  function pulse(t){
+    const p=Math.min(1,(t-t0)/650);
+    const r=9000 + p*65000;
+    ring.ellipse.semiMajorAxis = r;
+    ring.ellipse.semiMinorAxis = r;
+    ring.ellipse.material = Cesium.Color.fromCssColorString("#e9bd59").withAlpha(.22*(1-p));
+    if(p<1) requestAnimationFrame(pulse); else viewer.entities.remove(ring);
+  }
+  requestAnimationFrame(pulse);
+}
+
+function distanceMiles(lat1, lon1, lat2, lon2){
+  const r = Math.PI/180;
+  const p1=lat1*r, p2=lat2*r, dp=(lat2-lat1)*r, dl=(lon2-lon1)*r;
+  const a = Math.sin(dp/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2 * GAME_EARTH_RADIUS_MI * Math.asin(Math.min(1,Math.sqrt(a)));
+}
+
+function pointsForDistance(mi){
+  return Math.max(0, Math.round(ROUND_MAX - mi));
+}
+
+function feedbackFor(mi, pts){
+  if(mi < 1) return "Did you drop this flag from your front porch?";
+  if(mi <= 5) return "Do you live here?";
+  if(mi <= 25) return "The city gates are yours.";
+  if(mi <= 75) return "That flag practically hit the target.";
+  if(mi <= 150) return "A clean conquest.";
+  if(mi <= 350) return "Your scouts knew the territory.";
+  if(mi <= 750) return "Close enough to march there.";
+  if(mi <= 1500) return "Same realm. Wrong province.";
+  if(mi <= 3000) return "Your cartographer is getting nervous.";
+  if(mi <= 5500) return "The expedition took a wrong turn.";
+  if(mi <= 8500) return "Your scouts may never return.";
+  if(pts <= 500) return "Almost couldn't get farther away!";
+  return "That flag belongs to a different empire.";
+}
+
+function finalFeedback(score){
+  const pct = score/GAME_MAX;
+  if(score === GAME_MAX) return "Perfect conquest. Every flag hit home.";
+  if(score === 0) return "A legendary anti-conquest. Remarkably wrong.";
+  if(pct >= .97) return "Cartographic domination.";
+  if(pct >= .90) return "The world is nearly yours.";
+  if(pct >= .75) return "A formidable empire.";
+  if(pct >= .55) return "Respectable territory.";
+  if(pct >= .35) return "Your borders need work.";
+  return "History will remember the attempt.";
+}
+
+function formatAltitude(meters){
+  const feet = meters * 3.280839895;
+  if(feet >= 1000000) return `${(feet/1000000).toFixed(feet < 10000000 ? 2 : 1)}M ft`;
+  return `${Math.round(feet/1000).toLocaleString()}k ft`;
+}
+
+function updateAltitudeReadout(){
+  const h = Math.max(0, viewer.camera.positionCartographic.height);
+  const el = document.getElementById("altitudeReadout");
+  if(el) el.textContent = formatAltitude(h);
+}
+viewer.camera.changed.addEventListener(updateAltitudeReadout);
+updateAltitudeReadout();
+
+function setDots(){
+  const el=document.getElementById("dots"); el.innerHTML="";
+  DAILY_GAME.locations.forEach((_,i)=>{
+    const dot=document.createElement("div");
+    dot.className="dot "+(i<round?"done":i===round?"active":"");
+    el.appendChild(dot);
+  });
+}
+
+function showRound(){
+  locked=false;
+  removeRoundEntities();
+  document.getElementById("result").classList.remove("show");
+  document.getElementById("story").classList.remove("show");
+  document.getElementById("roundLabel").textContent=`Territory ${round+1} of 5`;
+  document.getElementById("cityName").textContent=DAILY_GAME.locations[round].city;
+  setDots();
+  viewer.scene.requestRender();
+}
+
+function viewRoute(guessLat, guessLng, target){
+  const entities = [guessEntity, targetEntity, routeEntity].filter(Boolean);
+  if (!entities.length) return;
+  // Zoom to both endpoints, but never closer than the gameplay zoom floor.
+  viewer.flyTo(entities, {
+    duration: 0.85,
+    offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-90), Math.max(2200000, MIN_CAMERA_HEIGHT_M))
+  }).catch(()=>{});
+}
+
+function handleGuessCartesian(cartesian){
+  if(locked || document.getElementById("start").style.display !== "none") return;
+  const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+  if(!cartographic) return;
+
+  const guessLat = Cesium.Math.toDegrees(cartographic.latitude);
+  const guessLng = Cesium.Math.toDegrees(cartographic.longitude);
+  locked=true;
+
+  const target=DAILY_GAME.locations[round];
+  const miles=distanceMiles(guessLat,guessLng,target.lat,target.lng);
+  const pts=pointsForDistance(miles);
+  total += pts;
+  roundScores.push({city:target.city,miles,points:pts});
+
+  addGuessAndAnswer(guessLat,guessLng,target);
+
+  document.getElementById("score").textContent=total.toLocaleString();
+  document.getElementById("milesOff").textContent=Math.round(miles).toLocaleString();
+  document.getElementById("roundPoints").textContent=pts.toLocaleString();
+  document.getElementById("feedback").textContent=feedbackFor(miles,pts);
+  document.getElementById("story").innerHTML=`<strong>${target.city}</strong><br>${target.blurb}`;
+  document.getElementById("story").classList.add("show");
+  document.getElementById("nextBtn").textContent=round===4?"See conquest":"Next territory";
+  document.getElementById("result").classList.add("show");
+
+  viewRoute(guessLat,guessLng,target);
+}
+
+const clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+clickHandler.setInputAction((click)=>{
+  const cartesian = viewer.camera.pickEllipsoid(click.position, viewer.scene.globe.ellipsoid);
+  if(cartesian) handleGuessCartesian(cartesian);
+}, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+function finish(){
+  document.getElementById("finalScore").textContent=total.toLocaleString();
+  document.getElementById("finalFeedback").textContent=finalFeedback(total);
+  const b=document.getElementById("breakdown"); b.innerHTML="";
+  roundScores.forEach((r,i)=>{
+    const d=document.createElement("div");
+    d.innerHTML=`<small>${i+1}</small><b>${r.points.toLocaleString()}</b>`;
+    b.appendChild(d);
+  });
+  document.getElementById("eligibilityNote").textContent=signedIn
+    ? "Signed-in play is eligible for prizes once the production prize system is connected."
+    : "You played as a guest. Guest scores can be shared, but prize play requires an account.";
+  document.getElementById("final").classList.add("show");
+}
+
+document.getElementById("nextBtn").onclick=()=>{
+  if(round===4){ finish(); return; }
+  round++;
+  showRound();
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(-15,18,9500000),
+    orientation:{heading:0,pitch:Cesium.Math.toRadians(-90),roll:0},
+    duration:.65
+  });
+};
+
+function startGame(){
+  document.getElementById("start").style.display="none";
+  document.getElementById("gamePanel").style.display="block";
+  showRound();
+}
+
+document.getElementById("guestBtn").onclick=startGame;
+document.getElementById("prizeBtn").onclick=()=>document.getElementById("auth").classList.add("show");
+document.getElementById("accountBtn").onclick=()=>document.getElementById("auth").classList.add("show");
+document.getElementById("closeAuth").onclick=()=>{
+  document.getElementById("auth").classList.remove("show");
+  if(document.getElementById("start").style.display!=="none") startGame();
+};
+
+function authPlaceholder(){
+  alert("The Geo-Nius sign-in screen is ready, but real Google/Apple authentication needs backend credentials. We'll connect that in the production backend step.");
+}
+document.getElementById("googleDemo").onclick=authPlaceholder;
+document.getElementById("appleDemo").onclick=authPlaceholder;
+
+document.getElementById("shareBtn").onclick=async()=>{
+  const text=`Geo-Nius #${DAILY_GAME.number}\n🌍 ${total.toLocaleString()}/${GAME_MAX.toLocaleString()}\n${roundScores.map((r)=>`⚑ ${r.points.toLocaleString()}`).join("\n")}\nCan you conquer the world?`;
+  try{
+    if(navigator.share) await navigator.share({title:"Geo-Nius",text});
+    else { await navigator.clipboard.writeText(text); alert("Score copied to clipboard."); }
+  }catch(e){}
+};
+
+document.getElementById("againBtn").onclick=()=>{
+  round=0; total=0; roundScores=[];
+  document.getElementById("score").textContent="0";
+  document.getElementById("final").classList.remove("show");
+  removeRoundEntities();
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(-15,18,INITIAL_CAMERA_HEIGHT_M),
+    orientation:{heading:0,pitch:Cesium.Math.toRadians(-90),roll:0},
+    duration:.7
+  });
+  showRound();
+};
+
+setDots();
+</script>
+</body>
+</html>
